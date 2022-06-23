@@ -77,26 +77,26 @@ class Book():
                        'twelve', 'thirteen', 'fourteen', 'fifteen',
                        'sixteen', 'seventeen', 'eighteen', 'nineteen'] + numberWordsByTens
         numberWordsPat = '(' + '|'.join(numberWords) + ')'
-        ordinalNumberWordsByTens = ['twentieth', 'thirtieth', 'fortieth', 'fiftieth', 
+        ordinalNumberWordsByTens = ['twentieth', 'thirtieth', 'fortieth', 'fiftieth',
                                     'sixtieth', 'seventieth', 'eightieth', 'ninetieth'] + \
                                     numberWordsByTens
-        ordinalNumberWords = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 
+        ordinalNumberWords = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth',
                               'seventh', 'eighth', 'ninth', 'twelfth', 'last'] + \
                              [numberWord + 'th' for numberWord in numberWords] + ordinalNumberWordsByTens
         ordinalsPat = '(the )?(' + '|'.join(ordinalNumberWords) + ')'
-        enumeratorsList = [arabicNumerals, romanNumerals, numberWordsPat, ordinalsPat] 
+        enumeratorsList = [arabicNumerals, romanNumerals, numberWordsPat, ordinalsPat]
         enumerators = '(' + '|'.join(enumeratorsList) + ')'
         form1 = 'chapter ' + enumerators
 
         # Form 2: II. The Mail
         enumerators = romanNumerals
-        separators = '(\. | )'
+        separators = '(\. +| +)'
         titleCase = '[A-Z][a-z]'
         form2 = enumerators + separators + titleCase
 
         # Form 3: II. THE OPEN ROAD
         enumerators = romanNumerals
-        separators = '(\. )'
+        separators = '(\. +| +)'
         titleCase = '[A-Z][A-Z]'
         form3 = enumerators + separators + titleCase
 
@@ -107,18 +107,26 @@ class Book():
         enumerators = '(' + '|'.join(enumeratorsList) + ')'
         form4 = enumerators
 
+        # Form 5: a series of words surrounded by underscores
+        form5 = '_[^"]{0,50}_$'
+
         pat = re.compile(form1, re.IGNORECASE)
         # This one is case-sensitive.
-        pat2 = re.compile('(%s|%s|%s)' % (form2, form3, form4))
+        pat2 = re.compile('(%s|%s|%s|%s)' % (form2, form3, form4, form5))
 
         # TODO: can't use .index() since not all lines are unique.
 
         headings = []
+        chapter_names = []
         for i, line in enumerate(self.lines):
             if pat.match(line) is not None:
+                chapter_names.append(line)
                 headings.append(i)
             if pat2.match(line) is not None:
+                chapter_names.append(line)
                 headings.append(i)
+
+        self.chapter_names = chapter_names
 
         if len(headings) < 3:
             logging.info('Headings: %s' % headings)
@@ -246,7 +254,7 @@ class Book():
                 os.makedirs(outDir)
             ext = '.txt'
             for num, chapter in zip(chapterNums, self.chapters):
-                path = outDir + '/' + num + ext
+                path = outDir + '/' + num + '-'+ self.chapter_names[int(num)-1] + ext
                 logging.debug(chapter)
                 chapter = '\n'.join(chapter)
                 with open(path, 'w') as f:
