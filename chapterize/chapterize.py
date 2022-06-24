@@ -91,24 +91,22 @@ class Book():
         # Form 2: II. The Mail
         enumerators = romanNumerals
         separators = '(\. +| +)'
-        titleCase = '[A-Z][a-z]'
+        titleCase = '[\w]{1,50}$'
         form2 = enumerators + separators + titleCase
 
-        # Form 3: II. THE OPEN ROAD
-        enumerators = romanNumerals
-        separators = '(\. +| +)'
-        titleCase = '[A-Z][A-Z]'
-        form3 = enumerators + separators + titleCase
-
-        # Form 4: a number on its own, e.g. 8, VIII
+        # Form 3: a number on its own, e.g. 8, VIII
         arabicNumerals = '^\d+\.?$'
         romanNumerals = '(?=[MDCLXVI])M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})\.?$'
         enumeratorsList = [arabicNumerals, romanNumerals]
         enumerators = '(' + '|'.join(enumeratorsList) + ')'
-        form4 = enumerators
+        form3 = enumerators
 
-        # Form 5: a series of words surrounded by underscores
-        form5 = '_[^"]{0,50}_$'
+        # Form 4: a series of words surrounded by underscores
+        form4 = '_[\w]{1,50}_$'
+
+        # Form 5: short, all-caps words without punctuation
+        form5 = '[A-Z ]{3,50}$'
+        # (?=\n*[^\n]{30,100})' # it is not reading the next line
 
         pat = re.compile(form1, re.IGNORECASE)
         # This one is case-sensitive.
@@ -125,7 +123,7 @@ class Book():
             if pat2.match(line) is not None:
                 chapter_names.append(line)
                 headings.append(i)
-
+    
         self.chapter_names = chapter_names
 
         if len(headings) < 3:
@@ -152,12 +150,12 @@ class Book():
             if delta < 4:
                 if pair[0] not in toBeDeleted:
                     toBeDeleted.append(pair[0])
-                if pair[1] not in toBeDeleted:
-                    toBeDeleted.append(pair[1])
         logging.debug('TOC locations to be deleted: %s' % toBeDeleted)
         for badLoc in toBeDeleted:
             index = self.headingLocations.index(badLoc)
             del self.headingLocations[index]
+            del self.chapter_names[index]
+
 
     def getEndLocation(self):
         """
@@ -253,12 +251,16 @@ class Book():
             if not os.path.exists(outDir):
                 os.makedirs(outDir)
             ext = '.txt'
-            for num, chapter in zip(chapterNums, self.chapters):
-                path = outDir + '/' + num + '-'+ self.chapter_names[int(num)-1] + ext
+
+            chapter_num = 0
+            for e, chapter in enumerate(self.chapters):
                 logging.debug(chapter)
                 chapter = '\n'.join(chapter)
-                with open(path, 'w') as f:
-                    f.write(chapter)
+                if len(chapter)>=2000: # remove very small chapters
+                    path = outDir + '/' + chapterNums[chapter_num] + '-'+ self.chapter_names[e] + ext
+                    with open(path, 'w') as f:
+                        f.write(chapter)
+                    chapter_num+=1
 
 if __name__ == '__main__':
     cli()
